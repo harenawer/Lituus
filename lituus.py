@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+import math
+
 import matplotlib
 matplotlib.use('GTK')
 
@@ -16,6 +18,34 @@ import gtk
 
 import pyfits
 import numpy
+
+def cuts_minmax(array):
+    return array.min(), array.max()
+
+def linearwrapper(cuts):
+    def wrap(x):
+        return (x - cuts[0]) / (cuts[1] - cuts[0])
+    return wrap
+
+def logwrapper(cuts):
+    def wrap(x):
+        return numpy.log(1+ x - cuts[0]) / math.log(1 + cuts[1] - cuts[0])
+    return wrap
+
+def image_scale(array, cuts, how):
+    
+    y = numpy.piecewise(array, [array < cuts[0], array > cuts[1]],
+                           [0, 1, how])
+
+    return y.astype('float32')
+
+def linear_scale(array, cuts):
+    how = linearwrapper(cuts)
+    return image_scale(array, cuts, how)
+
+def log_scale(array, cuts):
+    how = logwrapper(cuts)
+    return image_scale(array, cuts, how)
 
 class PlotArea(FigureCanvas):
   def __init__(self):
@@ -93,9 +123,9 @@ class LituusApp(object):
 
 	if filename:
 	    array = pyfits.getdata(filename)
-            # Why
-            #array = numpy.array([[80,0,23,3],[5,6,7,8]])
-            self.canvas.im.set_array(array)
+            cuts = cuts_minmax(array)
+            d = linear_scale(array.astype('float32'), cuts)
+            self.canvas.im.set_array(d[200:300, 200:300])
 	    self.canvas.draw()
 
 
